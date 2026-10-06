@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/.slnItems/">
+    <File Path="CHANGELOG.md" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="Directory.Packages.props" />
+    <File Path="Directory.Version.props" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/DragoAnt.Roslyn.Shared.Sources/DragoAnt.Roslyn.Shared.Sources.csproj" />
+  </Folder>
+</Solution>
