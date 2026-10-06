@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Packs the shared sources to a local feed and builds a separate consumer solution against it (Consumer/**). -->
+  <PropertyGroup>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <MSKit_SkipAudit_TargetFrameworkOverride>True</MSKit_SkipAudit_TargetFrameworkOverride>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Consumer/**" />
+    <None Remove="Consumer/**" />
+    <Content Include="Consumer/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

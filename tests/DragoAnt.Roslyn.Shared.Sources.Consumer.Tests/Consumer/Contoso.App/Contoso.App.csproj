@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Contoso.Rules.Analyzers" Version="1.0.0" />
+    <PackageReference Include="Contoso.Rules.Generators" Version="1.0.0" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsCodeAnalyzer>true</IsCodeAnalyzer>
+    <ContosoCodeFixProject>$(MSBuildThisFileDirectory)../Contoso.Rules.CodeFixes/Contoso.Rules.CodeFixes.csproj</ContosoCodeFixProject>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Every file in the compilation, the shared ones included, sees this rule; only the project's own file breaks it. -->
+    <GlobalAnalyzerConfigFiles Include="../strict.globalconfig" />
+  </ItemGroup>
+</Project>

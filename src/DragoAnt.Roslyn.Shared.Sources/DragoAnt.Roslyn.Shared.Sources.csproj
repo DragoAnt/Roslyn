@@ -23,7 +23,7 @@
 
   <ItemGroup>
     <None Include="src/**/*.cs" Pack="true" PackagePath="src/" />
-    <None Include="build/*.targets" Pack="true" PackagePath="build/" />
+    <None Update="build/*.targets" Pack="true" PackagePath="build/" />
   </ItemGroup>
 
 </Project>

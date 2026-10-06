@@ -2,26 +2,25 @@
 
   <!-- Compiles the shared helpers into the referencing analyzer, source generator or code fix as internal types.
        DragoAntRoslynSharedParts picks the folders (Common is always in): Generators, CodeFixes.
-       DragoAntRoslynSharedSourceRoot points at another copy of the sources, e.g. a local checkout. -->
+       DragoAntRoslynSharedSourceRoot points at another copy of the sources, e.g. a local checkout.
+       Both are read in item conditions, so they may be set anywhere, Directory.Build.targets included. -->
   <PropertyGroup>
     <DragoAntRoslynSharedSourceRoot Condition="'$(DragoAntRoslynSharedSourceRoot)'==''">$(MSBuildThisFileDirectory)../src/</DragoAntRoslynSharedSourceRoot>
-    <DragoAntRoslynSharedSourceRoot>$([MSBuild]::EnsureTrailingSlash('$(DragoAntRoslynSharedSourceRoot)'))</DragoAntRoslynSharedSourceRoot>
-    <_DragoAntRoslynSharedPartList>;$([System.String]::Copy('$(DragoAntRoslynSharedParts)').Replace(' ','').ToLowerInvariant());</_DragoAntRoslynSharedPartList>
     <_DragoAntRoslynSharedImportedBy Condition="'$(_DragoAntRoslynSharedImportedBy)'==''">$(MSBuildThisFileFullPath)</_DragoAntRoslynSharedImportedBy>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(_DragoAntRoslynSharedImportedBy)'=='$(MSBuildThisFileFullPath)'">
-    <Compile Include="$(DragoAntRoslynSharedSourceRoot)Common/**/*.cs"
+    <Compile Include="$([MSBuild]::EnsureTrailingSlash('$(DragoAntRoslynSharedSourceRoot)'))Common/**/*.cs"
              Link=".da.shared/Common/%(RecursiveDir)%(Filename)%(Extension)"
              Visible="true"
              DragoAntRoslynSharedPart="Common" />
-    <Compile Include="$(DragoAntRoslynSharedSourceRoot)Generators/**/*.cs"
-             Condition="$(_DragoAntRoslynSharedPartList.Contains(';generators;'))"
+    <Compile Include="$([MSBuild]::EnsureTrailingSlash('$(DragoAntRoslynSharedSourceRoot)'))Generators/**/*.cs"
+             Condition="$([System.String]::Copy(';$(DragoAntRoslynSharedParts);').Replace(' ','').ToLowerInvariant().Contains(';generators;'))"
              Link=".da.shared/Generators/%(RecursiveDir)%(Filename)%(Extension)"
              Visible="true"
              DragoAntRoslynSharedPart="Generators" />
-    <Compile Include="$(DragoAntRoslynSharedSourceRoot)CodeFixes/**/*.cs"
-             Condition="$(_DragoAntRoslynSharedPartList.Contains(';codefixes;'))"
+    <Compile Include="$([MSBuild]::EnsureTrailingSlash('$(DragoAntRoslynSharedSourceRoot)'))CodeFixes/**/*.cs"
+             Condition="$([System.String]::Copy(';$(DragoAntRoslynSharedParts);').Replace(' ','').ToLowerInvariant().Contains(';codefixes;'))"
              Link=".da.shared/CodeFixes/%(RecursiveDir)%(Filename)%(Extension)"
              Visible="true"
              DragoAntRoslynSharedPart="CodeFixes" />
@@ -31,11 +30,14 @@
   <Target Name="_DragoAntRoslynSharedCheckParts"
           BeforeTargets="CoreCompile"
           Condition="'$(_DragoAntRoslynSharedImportedBy)'=='$(MSBuildThisFileFullPath)'">
+    <PropertyGroup>
+      <_DragoAntRoslynSharedRoot>$([MSBuild]::EnsureTrailingSlash('$(DragoAntRoslynSharedSourceRoot)'))</_DragoAntRoslynSharedRoot>
+    </PropertyGroup>
     <Warning Code="DARS001"
              Condition="'%(_DragoAntRoslynSharedRequestedPart.Identity)'!='' and '%(_DragoAntRoslynSharedRequestedPart.Identity)'!='Common' and '%(_DragoAntRoslynSharedRequestedPart.Identity)'!='Generators' and '%(_DragoAntRoslynSharedRequestedPart.Identity)'!='CodeFixes'"
              Text="DragoAntRoslynSharedParts names an unknown part '%(_DragoAntRoslynSharedRequestedPart.Identity)'. Known parts: Common, Generators, CodeFixes." />
     <Warning Code="DARS002"
-             Condition="!Exists('$(DragoAntRoslynSharedSourceRoot)Common')"
+             Condition="!Exists('$(_DragoAntRoslynSharedRoot)Common')"
              Text="DragoAntRoslynSharedSourceRoot '$(DragoAntRoslynSharedSourceRoot)' has no Common folder, so no shared helper is compiled." />
   </Target>
 

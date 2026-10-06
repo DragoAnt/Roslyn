@@ -1,0 +1,4 @@
+is_global = true
+
+csharp_style_namespace_declarations = block_scoped:warning
+dotnet_diagnostic.IDE0160.severity = warning

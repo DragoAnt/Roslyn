@@ -1,0 +1,50 @@
+<Project>
+
+  <!-- Stands in for the MSBuildKit Roslyn part: a project names its role, this file wires the rest. -->
+  <PropertyGroup>
+    <ContosoIsRoslynPart Condition="'$(IsCodeAnalyzer)'=='true' or '$(IsSourceGenerator)'=='true' or '$(IsCodeFixer)'=='true'">true</ContosoIsRoslynPart>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(ContosoIsRoslynPart)'=='true'">
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeSymbols>false</IncludeSymbols>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <NoPackageAnalysis>true</NoPackageAnalysis>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_ContosoPackRoslynAssemblies</TargetsForTfmSpecificContentInPackage>
+    <DragoAntRoslynSharedParts>Common</DragoAntRoslynSharedParts>
+    <DragoAntRoslynSharedParts Condition="'$(IsSourceGenerator)'=='true'">Common;Generators</DragoAntRoslynSharedParts>
+    <DragoAntRoslynSharedParts Condition="'$(IsCodeFixer)'=='true'">Common;CodeFixes</DragoAntRoslynSharedParts>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsCodeFixer)'=='true'">
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(ContosoIsRoslynPart)'=='true'">
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0" PrivateAssets="all" />
+    <PackageReference Include="DragoAnt.Roslyn.Shared.Sources" Version="$(DragoAntRoslynSharedSourcesVersion)" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IsCodeFixer)'=='true'">
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IsCodeAnalyzer)'=='true'">
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md;AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+
+  <Target Name="_ContosoPackRoslynAssemblies">
+    <MSBuild Projects="$(ContosoCodeFixProject)" Targets="GetTargetPath" Properties="Configuration=$(Configuration)" Condition="'$(ContosoCodeFixProject)'!=''">
+      <Output TaskParameter="TargetOutputs" ItemName="_ContosoCodeFixTargetPath" />
+    </MSBuild>
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(TargetPath)" PackagePath="analyzers/dotnet/cs/" />
+      <TfmSpecificPackageFile Include="@(_ContosoCodeFixTargetPath)" PackagePath="analyzers/dotnet/cs/" />
+    </ItemGroup>
+  </Target>
+
+</Project>
