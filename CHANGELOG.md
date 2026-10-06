@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-06
+
 First release of [DragoAnt.Roslyn.Shared.Sources](https://www.nuget.org/packages/DragoAnt.Roslyn.Shared.Sources): source-only helpers compiled `internal` into each Roslyn analyzer, source generator and code fix that references the package. Requires [Microsoft.CodeAnalysis.CSharp](https://www.nuget.org/packages/Microsoft.CodeAnalysis.CSharp) 5.0.0 or later; the sources compile on `netstandard2.0`.
 
 ### Added
