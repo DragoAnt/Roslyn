@@ -1,0 +1,41 @@
+# Hosts nuget.org renders package-readme images and badges from, one per line.
+# Source: https://learn.microsoft.com/nuget/nuget-org/package-readme-on-nuget-org#allowed-domains-for-images-and-badges
+# (page updated 2026-07-07, read 2026-10-05). Refreshed with kit releases; never fetched at build time.
+# github.com is allowed only for Actions workflow badges (github.com/.../workflows/.../badge.svg), a path the check handles itself.
+api.codacy.com
+api.codeclimate.com
+api.dependabot.com
+api.reuse.software
+api.travis-ci.com
+app.codacy.com
+app.deepsource.com
+avatars.githubusercontent.com
+badgen.net
+badges.gitter.im
+camo.githubusercontent.com
+caniuse.bitsofco.de
+cdn.jsdelivr.net
+cdn.syncfusion.com
+ci.appveyor.com
+circleci.com
+cloudback.it
+codecov.io
+codefactor.io
+coveralls.io
+dev.azure.com
+devpod.sh
+flat.badgen.net
+gitlab.com
+i.imgur.com
+img.shields.io
+infragistics.com
+isitmaintained.com
+media.githubusercontent.com
+opencollective.com
+raw.github.com
+raw.githubusercontent.com
+snyk.io
+sonarcloud.io
+travis-ci.com
+travis-ci.org
+user-images.githubusercontent.com

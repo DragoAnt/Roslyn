@@ -1,0 +1,44 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - actions/*
+          - DragoAnt/*
+          - NuGet/*
+
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      microsoft:
+        patterns:
+          - Microsoft.*
+          - System.*
+      testing:
+        patterns:
+          - xunit*
+          - Verify*
+          - NSubstitute*
+          - AwesomeAssertions
+          - Bogus
+          - coverlet.*
+    ignore:
+      # Versions after 32.0.0 require a paid maintenance subscription.
+      - dependency-name: Verify
+        versions:
+          - '>32.0.0'
+      - dependency-name: Verify.XunitV3
+        versions:
+          - '>32.0.0'
+      # One version line per target framework (Directory.Packages.props); a major bump would break the older TFMs.
+      - dependency-name: Microsoft.Extensions.*
+        update-types:
+          - version-update:semver-major
+      # The Roslyn floor (the compiler of the .NET 10.0.100 SDK); raised on purpose, never by a bot.
+      - dependency-name: Microsoft.CodeAnalysis.*

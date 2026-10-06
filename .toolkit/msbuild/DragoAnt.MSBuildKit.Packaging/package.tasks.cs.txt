@@ -1,0 +1,446 @@
+// Inline MSBuild tasks of the Packaging part, compiled by the RoslynCodeTaskFactory that ships with
+// MSBuild. One task with two actions, so a pack compiles it once. The .txt extension keeps it out of
+// a project's default Compile glob.
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using Microsoft.Build.Framework;
+using Microsoft.Build.Utilities;
+
+public sealed class MSKit_PackageAssets : Task
+{
+    [Required] public string Mode { get; set; }
+
+    public override bool Execute()
+    {
+        if (Mode == "Inspect") Inspect();
+        else if (Mode == "GenerateReadme") GenerateReadme();
+        else Log.LogError("MSKit_PackageAssets: unknown Mode '" + Mode + "'.");
+        return !Log.HasLoggedErrors;
+    }
+
+    public string ReadmePath { get; set; }
+    public string IconPath { get; set; }
+    public string AllowedImageHosts { get; set; }
+    [Output] public string RelativeImages { get; set; }
+    [Output] public string DisallowedImages { get; set; }
+    [Output] public string RelativeLinks { get; set; }
+    [Output] public string HtmlTags { get; set; }
+    [Output] public string Alerts { get; set; }
+    [Output] public bool HasMermaid { get; set; }
+    [Output] public bool IconIsPng { get; set; }
+    [Output] public int IconWidth { get; set; }
+    [Output] public int IconHeight { get; set; }
+
+    private void Inspect()
+    {
+        var relativeImages = new List<string>();
+        var disallowedImages = new List<string>();
+        var relativeLinks = new List<string>();
+        var htmlTags = new List<string>();
+        var alerts = new List<string>();
+
+        if (!string.IsNullOrEmpty(ReadmePath) && File.Exists(ReadmePath))
+        {
+            var text = File.ReadAllText(ReadmePath);
+            HasMermaid = Regex.IsMatch(text, @"^\s*(```|~~~)\s*mermaid\b", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
+            var prose = Regex.Replace(text, @"^\s*(```|~~~)[\s\S]*?^\s*\1\s*$", "", RegexOptions.Multiline);
+            prose = Regex.Replace(prose, @"`[^`\r\n]*`", "");
+
+            var hosts = (AllowedImageHosts ?? "").Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(h => h.Trim().ToLowerInvariant()).Where(h => h.Length > 0).ToList();
+
+            var images = new List<string>();
+            foreach (Match m in Regex.Matches(prose, @"!\[[^\]]*\]\(\s*<?([^)\s>]+)"))
+                images.Add(m.Groups[1].Value);
+            foreach (Match m in Regex.Matches(prose, @"<img\b[^>]*\bsrc\s*=\s*[""']([^""']+)[""']", RegexOptions.IgnoreCase))
+                images.Add(m.Groups[1].Value);
+
+            foreach (var url in images.Distinct())
+            {
+                Uri uri;
+                if (!Uri.TryCreate(url, UriKind.Absolute, out uri) || (uri.Scheme != "https" && uri.Scheme != "http"))
+                {
+                    relativeImages.Add(url);
+                    continue;
+                }
+                var host = uri.Host.ToLowerInvariant();
+                var allowed = hosts.Contains(host)
+                    || (host == "github.com" && Regex.IsMatch(uri.AbsolutePath, @"^/[^/]+/[^/]+/(actions/)?workflows/[^/]+/badge\.svg$", RegexOptions.IgnoreCase));
+                if (!allowed)
+                    disallowedImages.Add(url);
+            }
+
+            foreach (Match m in Regex.Matches(prose, @"(?<!!)\[[^\]]*\]\(\s*<?([^)\s>]+)"))
+            {
+                var target = m.Groups[1].Value;
+                if (target.StartsWith("#") || Regex.IsMatch(target, @"^[A-Za-z][A-Za-z0-9+.-]*:"))
+                    continue;
+                relativeLinks.Add(target);
+            }
+
+            foreach (Match m in Regex.Matches(prose, @"</?([A-Za-z][A-Za-z0-9-]*)(\s[^<>]*)?/?>"))
+            {
+                if (m.Value.Contains("://") || m.Value.Contains("@"))
+                    continue;
+                htmlTags.Add("<" + m.Groups[1].Value.ToLowerInvariant() + ">");
+            }
+
+            foreach (Match m in Regex.Matches(prose, @"^\s*>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]", RegexOptions.Multiline | RegexOptions.IgnoreCase))
+                alerts.Add("[!" + m.Groups[1].Value.ToUpperInvariant() + "]");
+        }
+
+        if (!string.IsNullOrEmpty(IconPath) && File.Exists(IconPath))
+        {
+            var header = new byte[24];
+            using (var stream = File.OpenRead(IconPath))
+            {
+                var read = stream.Read(header, 0, header.Length);
+                IconIsPng = read == 24 && header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47;
+            }
+            if (IconIsPng)
+            {
+                IconWidth = (header[16] << 24) | (header[17] << 16) | (header[18] << 8) | header[19];
+                IconHeight = (header[20] << 24) | (header[21] << 16) | (header[22] << 8) | header[23];
+            }
+        }
+
+        RelativeImages = string.Join(", ", relativeImages.Distinct());
+        DisallowedImages = string.Join(", ", disallowedImages.Distinct());
+        RelativeLinks = string.Join(", ", relativeLinks.Distinct());
+        HtmlTags = string.Join(", ", htmlTags.Distinct());
+        Alerts = string.Join(", ", alerts.Distinct());
+    }
+
+    public string OutputPath { get; set; }
+    public string FindingsBase { get; set; }
+    public string ReleasesUrlPath { get; set; }
+    public string RepoRoot { get; set; }
+    public string PackageId { get; set; }
+    public string RepositoryUrl { get; set; }
+    public string Commit { get; set; }
+    public string Provider { get; set; }
+    public string BlobTemplate { get; set; }
+    public string RawTemplate { get; set; }
+    public string ReleasesUrl { get; set; }
+    public string IssuesUrl { get; set; }
+    public string ReadmeTitle { get; set; }
+    public string Visibility { get; set; }
+    public string GitHubHosts { get; set; }
+    public string GitLabHosts { get; set; }
+    public string AzureReposHosts { get; set; }
+    public string BitbucketHosts { get; set; }
+    public string GiteaHosts { get; set; }
+
+    private void GenerateReadme()
+    {
+        var codes =new[] { "MSKIT_PKG020", "MSKIT_PKG021", "MSKIT_PKG022" };
+        var findings = codes.ToDictionary(c => c, c => new List<string>());
+        Action<string, string> report = (code, text) => findings[code].Add(text.Replace("\r", " ").Replace("\n", " "));
+
+        Func<string, string> norm = s => (s ?? "").Trim();
+        Func<string, HashSet<string>> hostSet = list => new HashSet<string>(
+            norm(list).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(h => Regex.Replace(h.Trim().ToLowerInvariant(), @"^[a-z][a-z0-9+.-]*://", ""))
+                .Select(h => h.Split('/')[0].Split(':')[0])
+                .Where(h => h.Length > 0));
+
+        var root = Path.GetFullPath(string.IsNullOrWhiteSpace(RepoRoot) ? Path.GetDirectoryName(ReadmePath) : RepoRoot).TrimEnd('\\', '/');
+        var readmeFull = Path.GetFullPath(ReadmePath);
+        var readmeDir = Path.GetDirectoryName(readmeFull);
+        var readmeRel = "";
+        if (readmeDir.Length > root.Length && readmeDir.StartsWith(root, StringComparison.OrdinalIgnoreCase) && (readmeDir[root.Length] == '\\' || readmeDir[root.Length] == '/'))
+            readmeRel = readmeDir.Substring(root.Length + 1).Replace('\\', '/');
+        var display = (readmeRel.Length > 0 ? readmeRel + "/" : "") + Path.GetFileName(readmeFull);
+
+        var repoUrl = norm(RepositoryUrl);
+        var m0 = Regex.Match(repoUrl, @"^[^@/\s]+@([^:/\s]+):(.+)$");
+        if (m0.Success) repoUrl = "https://" + m0.Groups[1].Value + "/" + m0.Groups[2].Value;
+        if (repoUrl.EndsWith(".git", StringComparison.OrdinalIgnoreCase)) repoUrl = repoUrl.Substring(0, repoUrl.Length - 4);
+        repoUrl = repoUrl.TrimEnd('/');
+        string host = "", repoPath = "", owner = "", repo = "";
+        Uri repoUri;
+        var hasRepo = Uri.TryCreate(repoUrl, UriKind.Absolute, out repoUri) && repoUri.Host.Length > 0;
+        if (hasRepo)
+        {
+            host = repoUri.Host.ToLowerInvariant();
+            repoPath = repoUri.AbsolutePath.Trim('/');
+            var scheme = repoUri.Scheme == "http" ? "http" : "https";
+            repoUrl = scheme + "://" + repoUri.Authority + (repoPath.Length > 0 ? "/" + repoPath : "");
+            var cut = repoPath.LastIndexOf('/');
+            owner = cut > 0 ? repoPath.Substring(0, cut) : "";
+            repo = cut >= 0 ? repoPath.Substring(cut + 1) : repoPath;
+        }
+
+        var provider = norm(Provider);
+        if (provider.Length == 0 && hasRepo)
+        {
+            if (host == "github.com" || hostSet(GitHubHosts).Contains(host)) provider = "GitHub";
+            else if (host == "gitlab.com" || hostSet(GitLabHosts).Contains(host)) provider = "GitLab";
+            else if (host == "dev.azure.com" || host.EndsWith(".visualstudio.com") || hostSet(AzureReposHosts).Contains(host)) provider = "AzureDevOps";
+            else if (host == "bitbucket.org" || hostSet(BitbucketHosts).Contains(host)) provider = "Bitbucket";
+            else if (host == "codeberg.org" || host == "gitea.com" || hostSet(GiteaHosts).Contains(host)) provider = "Gitea";
+        }
+
+        string blob = "", tree = "", raw = "", releases = "", issues = "";
+        switch (provider.ToLowerInvariant())
+        {
+            case "github":
+                blob = "{repoUrl}/blob/{commit}/{path}"; tree = "{repoUrl}/tree/{commit}/{path}";
+                raw = host == "github.com" ? "https://raw.githubusercontent.com/{repoPath}/{commit}/{path}" : "{repoUrl}/raw/{commit}/{path}";
+                releases = "{repoUrl}/releases"; issues = "{repoUrl}/issues";
+                break;
+            case "gitlab":
+                blob = "{repoUrl}/-/blob/{commit}/{path}"; tree = "{repoUrl}/-/tree/{commit}/{path}"; raw = "{repoUrl}/-/raw/{commit}/{path}";
+                releases = "{repoUrl}/-/releases"; issues = "{repoUrl}/-/issues";
+                break;
+            case "azuredevops":
+                blob = tree = raw = "{repoUrl}?path=/{path}&version=GC{commit}";
+                break;
+            case "bitbucket":
+                blob = tree = "{repoUrl}/src/{commit}/{path}"; raw = "{repoUrl}/raw/{commit}/{path}"; issues = "{repoUrl}/issues";
+                break;
+            case "gitea":
+                blob = tree = "{repoUrl}/src/commit/{commit}/{path}"; raw = "{repoUrl}/raw/commit/{commit}/{path}";
+                releases = "{repoUrl}/releases"; issues = "{repoUrl}/issues";
+                break;
+            case "":
+                break;
+            default:
+                report("MSKIT_PKG020", display + ": MSKit_RepoProvider '" + provider + "' is not one of GitHub, GitLab, AzureDevOps, Bitbucket, Gitea; set MSKit_RepoBlobUrlTemplate and MSKit_RepoRawUrlTemplate instead.");
+                break;
+        }
+        if (norm(BlobTemplate).Length > 0) { blob = norm(BlobTemplate); tree = blob.Contains("/blob/") ? blob.Replace("/blob/", "/tree/") : blob; }
+        if (norm(RawTemplate).Length > 0) raw = norm(RawTemplate);
+
+        var commit = norm(Commit);
+        string why = null;
+        if (!hasRepo && norm(BlobTemplate).Length == 0) why = "there is no repository URL (set RepositoryUrl)";
+        else if (blob.Length == 0 || raw.Length == 0) why = "the repository host '" + host + "' is not recognised (set MSKit_RepoProvider, add a SourceLinkGitLabHost / SourceLinkGitHubHost item, or set MSKit_RepoBlobUrlTemplate and MSKit_RepoRawUrlTemplate)";
+        else if (commit.Length == 0 && (blob.Contains("{commit}") || raw.Contains("{commit}"))) why = "there is no commit to pin them to (RepositoryCommit is empty)";
+        var canRewrite = why == null;
+        var unresolved = 0;
+
+        Func<string, string, string> expand = (template, path) => template
+            .Replace("{repoUrl}", repoUrl).Replace("{host}", host).Replace("{repoPath}", repoPath)
+            .Replace("{owner}", owner).Replace("{repo}", repo).Replace("{commit}", commit).Replace("{path}", path);
+
+        Func<string, string> combine = p =>
+        {
+            var parts = new List<string>();
+            if (!p.StartsWith("/"))
+                parts.AddRange(readmeRel.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries));
+            foreach (var s in p.Split('/'))
+            {
+                if (s.Length == 0 || s == ".") continue;
+                if (s == "..") { if (parts.Count == 0) return null; parts.RemoveAt(parts.Count - 1); continue; }
+                parts.Add(s);
+            }
+            return string.Join("/", parts);
+        };
+
+        var allowed = hostSet(AllowedImageHosts);
+        Action<string, int> checkImage = (url, n) =>
+        {
+            Uri u;
+            if (!Uri.TryCreate(url.Trim('<', '>'), UriKind.Absolute, out u) || (u.Scheme != "https" && u.Scheme != "http")) return;
+            var h = u.Host.ToLowerInvariant();
+            if (allowed.Contains(h) || (h == "github.com" && Regex.IsMatch(u.AbsolutePath, @"^/[^/]+/[^/]+/(actions/)?workflows/[^/]+/badge\.svg$", RegexOptions.IgnoreCase))) return;
+            report("MSKIT_PKG021", display + " line " + n + ": the image " + url + " comes from " + h + ", a host nuget.org does not show images from. Use an allowed host (nuget.allowed-image-hosts.txt in the kit) or point MSKit_RepoRawUrlTemplate at one.");
+        };
+
+        Func<string, bool, int, string> resolve = (target, isImage, n) =>
+        {
+            var angle = target.StartsWith("<") && target.EndsWith(">");
+            var t = angle ? target.Substring(1, target.Length - 2) : target;
+            if (t.Length == 0 || t.StartsWith("#") || t.StartsWith("//") || Regex.IsMatch(t, @"^[A-Za-z][A-Za-z0-9+.-]*:")) return target;
+            var cut = t.IndexOfAny(new[] { '?', '#' });
+            var p = cut >= 0 ? t.Substring(0, cut) : t;
+            var suffix = cut >= 0 ? t.Substring(cut) : "";
+            if (p.Length == 0) return target;
+            if (!canRewrite) { unresolved++; return target; }
+            var rp = combine(Uri.UnescapeDataString(p));
+            if (rp == null)
+            {
+                report("MSKIT_PKG020", display + " line " + n + ": " + t + " points outside the repository and is left as it is.");
+                return target;
+            }
+            var isDir = Directory.Exists(Path.Combine(root, rp.Replace('/', Path.DirectorySeparatorChar)));
+            var encoded = string.Join("/", rp.Split('/').Select(Uri.EscapeDataString));
+            var url = expand(isImage ? raw : (isDir ? tree : blob), encoded) + suffix;
+            return angle ? "<" + url + ">" : url;
+        };
+
+        var imageRe = new Regex(@"(!\[[^\[\]]*\]\(\s*)(<[^>]*>|[^)\s]+)");
+        var linkRe = new Regex(@"((?<!!)\[(?:[^\[\]]|\[[^\[\]]*\])*\]\(\s*)(<[^>]*>|[^)\s]+)");
+        var refDefRe = new Regex(@"^(\s{0,3}\[[^\]]+\]:\s*)(<[^>]*>|\S+)(.*)$");
+        var imageExtRe = new Regex(@"\.(png|jpe?g|gif|svg|webp|bmp|ico)$", RegexOptions.IgnoreCase);
+        var codeSpanRe = new Regex(@"(`+)[\s\S]*?(?<!`)\1(?!`)");
+
+        Func<string, int, string> rewriteProse = (s, n) =>
+        {
+            s = imageRe.Replace(s, m => { var r = resolve(m.Groups[2].Value, true, n); checkImage(r, n); return m.Groups[1].Value + r; });
+            return linkRe.Replace(s, m => m.Groups[1].Value + resolve(m.Groups[2].Value, false, n));
+        };
+        Func<string, int, string> rewriteLine = (line, n) =>
+        {
+            var rd = refDefRe.Match(line);
+            if (rd.Success)
+            {
+                var target = rd.Groups[2].Value;
+                var isImage = imageExtRe.IsMatch(target.Trim('<', '>').Split('?', '#')[0]);
+                var r = resolve(target, isImage, n);
+                if (isImage) checkImage(r, n);
+                return rd.Groups[1].Value + r + rd.Groups[3].Value;
+            }
+            var sb = new StringBuilder();
+            var pos = 0;
+            foreach (Match m in codeSpanRe.Matches(line))
+            {
+                sb.Append(rewriteProse(line.Substring(pos, m.Index - pos), n));
+                sb.Append(m.Value);
+                pos = m.Index + m.Length;
+            }
+            sb.Append(rewriteProse(line.Substring(pos), n));
+            return sb.ToString();
+        };
+
+        var skipOpen = new Regex(@"^\s*<!--\s*nuget:skip\s*-->\s*$");
+        var skipClose = new Regex(@"^\s*<!--\s*/nuget:skip\s*-->\s*$");
+        var onlyOpen = new Regex(@"^\s*<!--\s*nuget:only\s+(.+?)\s*-->\s*$");
+        var onlyClose = new Regex(@"^\s*<!--\s*/nuget:only\s*-->\s*$");
+        var fenceRe = new Regex(@"^\s{0,3}(`{3,}|~{3,})");
+
+        var lines = File.ReadAllText(readmeFull).Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+        var outLines = new List<string>();
+        var outFence = new List<bool>();
+        string fence = null;
+        bool skipping = false, inOnly = false, keepOnly = true;
+        int skipLine = 0, onlyLine = 0;
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var n = i + 1;
+            var drop = skipping || (inOnly && !keepOnly);
+            if (fence != null)
+            {
+                if (Regex.IsMatch(line, @"^\s{0,3}" + Regex.Escape(fence.Substring(0, 1)) + "{" + fence.Length + @",}\s*$")) fence = null;
+                if (!drop) { outLines.Add(line); outFence.Add(true); }
+                continue;
+            }
+            if (skipOpen.IsMatch(line))
+            {
+                if (skipping) report("MSKIT_PKG020", display + " line " + n + ": nuget:skip opened again before line " + skipLine + "'s was closed.");
+                skipping = true; skipLine = n; continue;
+            }
+            if (skipClose.IsMatch(line))
+            {
+                if (!skipping) report("MSKIT_PKG020", display + " line " + n + ": /nuget:skip has no matching nuget:skip.");
+                skipping = false; continue;
+            }
+            var om = onlyOpen.Match(line);
+            if (om.Success)
+            {
+                if (inOnly) report("MSKIT_PKG020", display + " line " + n + ": nuget:only opened again before line " + onlyLine + "'s was closed.");
+                inOnly = true; onlyLine = n;
+                keepOnly = Regex.Split(om.Groups[1].Value.Trim(), @"[\s,]+").Any(id => string.Equals(id, PackageId, StringComparison.OrdinalIgnoreCase));
+                continue;
+            }
+            if (onlyClose.IsMatch(line))
+            {
+                if (!inOnly) report("MSKIT_PKG020", display + " line " + n + ": /nuget:only has no matching nuget:only.");
+                inOnly = false; keepOnly = true; continue;
+            }
+            var fm = fenceRe.Match(line);
+            if (fm.Success)
+            {
+                fence = fm.Groups[1].Value;
+                if (!drop) { outLines.Add(line); outFence.Add(true); }
+                continue;
+            }
+            if (drop) continue;
+            outLines.Add(rewriteLine(line, n));
+            outFence.Add(false);
+        }
+        if (skipping) report("MSKIT_PKG020", display + " line " + skipLine + ": nuget:skip is never closed, so everything after it is left out.");
+        if (inOnly) report("MSKIT_PKG020", display + " line " + onlyLine + ": nuget:only is never closed.");
+        if (!canRewrite && unresolved > 0)
+            report("MSKIT_PKG020", display + ": " + unresolved + " relative link(s) and image(s) stay relative because " + why + ".");
+
+        var title = norm(ReadmeTitle) == "auto" ? norm(PackageId) : norm(ReadmeTitle);
+        if (title.Length > 0)
+        {
+            var anyAtx = new Regex(@"^ {0,3}#{1,6}(?:[ \t]|$)");
+            var h1Atx = new Regex(@"^ {0,3}#(?:[ \t]|$)");
+            var setextH1 = new Regex(@"^ {0,3}=+[ \t]*$");
+            int from = -1, to = -1;
+            for (var i = 0; i < outLines.Count && from < 0; i++)
+            {
+                if (outFence[i]) continue;
+                if (h1Atx.IsMatch(outLines[i])) { from = to = i; continue; }
+                if (i + 1 < outLines.Count && !outFence[i + 1] && outLines[i].Trim().Length > 0 && !anyAtx.IsMatch(outLines[i]) && setextH1.IsMatch(outLines[i + 1]))
+                {
+                    from = i; to = i + 1;
+                    while (from > 0 && !outFence[from - 1] && outLines[from - 1].Trim().Length > 0 && !anyAtx.IsMatch(outLines[from - 1])) from--;
+                }
+            }
+            if (from >= 0)
+            {
+                outLines.RemoveRange(from, to - from + 1); outFence.RemoveRange(from, to - from + 1);
+                outLines.Insert(from, "# " + title); outFence.Insert(from, false);
+            }
+            else
+            {
+                outLines.InsertRange(0, new[] { "# " + title, "" }); outFence.InsertRange(0, new[] { false, false });
+            }
+        }
+
+        var releasesUrl = norm(ReleasesUrl) == "auto" ? (hasRepo && releases.Length > 0 ? expand(releases, "") : "") : expand(norm(ReleasesUrl), "");
+        var issuesUrl = norm(IssuesUrl) == "auto" ? (hasRepo && issues.Length > 0 ? expand(issues, "") : "") : expand(norm(IssuesUrl), "");
+        var start = -1;
+        var end = outLines.Count;
+        for (var i = 0; i < outLines.Count; i++)
+            if (!outFence[i] && Regex.IsMatch(outLines[i], @"^##\s+Overview\s*#*\s*$", RegexOptions.IgnoreCase)) { start = i + 1; break; }
+        if (start < 0) start = 0;
+        for (var i = start; i < outLines.Count; i++)
+            if (!outFence[i] && (start > 0 ? Regex.IsMatch(outLines[i], @"^#{1,2}\s") : Regex.IsMatch(outLines[i], @"^##\s"))) { end = i; break; }
+        var overview = string.Join("\n", outLines.GetRange(start, end - start));
+        var links = new List<string>();
+        if (releasesUrl.Length > 0 && !overview.Contains("](" + releasesUrl)) links.Add("[Release notes](" + releasesUrl + ")");
+        if (issuesUrl.Length > 0 && !overview.Contains("](" + issuesUrl)) links.Add("[Issues](" + issuesUrl + ")");
+        if (links.Count > 0)
+        {
+            var at = end;
+            while (at > start && outLines[at - 1].Trim().Length == 0) at--;
+            outLines.InsertRange(at, new[] { "", string.Join(" · ", links), "" });
+            outFence.InsertRange(at, new[] { false, false, false });
+        }
+
+        var visibility = norm(Visibility).ToLowerInvariant();
+        if (visibility == "private" || visibility == "internal")
+            report("MSKIT_PKG022", "The repository " + (repoUrl.Length > 0 ? repoUrl : "of " + PackageId) + " is " + visibility + ": the links in the package readme of " + PackageId + " will not open for people reading it on nuget.org. Publish from a public repository, or point MSKit_RepoBlobUrlTemplate and MSKit_RepoRawUrlTemplate at a public mirror.");
+
+        var result = new List<string>();
+        var blank = true;
+        for (var i = 0; i < outLines.Count; i++)
+        {
+            var isBlank = !outFence[i] && outLines[i].Trim().Length == 0;
+            if (isBlank && blank) continue;
+            result.Add(outLines[i]);
+            blank = isBlank;
+        }
+        while (result.Count > 0 && result[result.Count - 1].Trim().Length == 0) result.RemoveAt(result.Count - 1);
+
+        var utf8 = new UTF8Encoding(false);
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(OutputPath)));
+        File.WriteAllText(OutputPath, string.Join("\n", result) + "\n", utf8);
+        foreach (var code in codes)
+            File.WriteAllText(FindingsBase + "." + code + ".txt", string.Join("\n", findings[code]) + (findings[code].Count > 0 ? "\n" : ""), utf8);
+        if (!string.IsNullOrWhiteSpace(ReleasesUrlPath))
+            File.WriteAllText(ReleasesUrlPath, releasesUrl.Length > 0 ? releasesUrl + "\n" : "", utf8);
+    }
+}
