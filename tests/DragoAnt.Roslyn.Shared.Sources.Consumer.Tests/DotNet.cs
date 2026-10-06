@@ -13,7 +13,10 @@ internal static class DotNet
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(5);
 
-    /// <summary>Runs the dotnet CLI in <paramref name="workingDirectory"/> without the MSBuild state of the test host's own run.</summary>
+    /// <summary>
+    /// Runs the dotnet CLI in <paramref name="workingDirectory"/> without the MSBuild state and the coverage profiler
+    /// of the test host's own run, so the fixture's compiler is not instrumented into the repository's coverage.
+    /// </summary>
     public static async Task<DotNetResult> RunAsync(string workingDirectory, CancellationToken cancellationToken, params string[] arguments)
     {
         var start = new ProcessStartInfo("dotnet")
@@ -68,7 +71,10 @@ internal static class DotNet
         key.StartsWith("MSBuild", StringComparison.OrdinalIgnoreCase)
         || key.StartsWith("DOTNET_HOST_PATH", StringComparison.OrdinalIgnoreCase)
         || key.StartsWith("NUGET_", StringComparison.OrdinalIgnoreCase)
-        || key.StartsWith("TESTINGPLATFORM", StringComparison.OrdinalIgnoreCase);
+        || key.StartsWith("TESTINGPLATFORM", StringComparison.OrdinalIgnoreCase)
+        || key.StartsWith("CORECLR_", StringComparison.OrdinalIgnoreCase)
+        || key.StartsWith("COR_", StringComparison.OrdinalIgnoreCase)
+        || key.StartsWith("MicrosoftInstrumentationEngine", StringComparison.OrdinalIgnoreCase);
 
     private static void Append(StringBuilder output, string? line)
     {
