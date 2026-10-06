@@ -1,0 +1,54 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build and test
+    uses: DragoAnt/.github/.github/workflows/dotnet-build.yml@b47d46e30f75cb28fa8b77ea85a80b6c4832b650 # main
+    with:
+      version: 0.0.0-ci.${{ github.run_number }}
+      coverage-threshold: 70
+      pack: true
+
+  windows:
+    name: Build and test (Windows)
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: |
+            8.0.x
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build DragoAnt.Roslyn.slnx -c Release -p:ContinuousIntegrationBuild=true -p:Version=0.0.0-ci.${{ github.run_number }}
+
+      - name: Test
+        run: dotnet test --solution DragoAnt.Roslyn.slnx -c Release --no-build --no-progress

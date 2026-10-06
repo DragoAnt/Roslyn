@@ -1,0 +1,13 @@
+<Project>
+
+  <!-- Mode="Inspect" reads the package README and icon for the MSKIT_PKG checks; Mode="GenerateReadme"
+       writes the readme generated from MSKit_PackageReadmeFrom. The code is in package.tasks.cs.txt. -->
+  <UsingTask TaskName="MSKit_PackageAssets"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)package.tasks.cs.txt" />
+    </Task>
+  </UsingTask>
+
+</Project>

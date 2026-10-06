@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- The descriptors and the analyzer here are test fixtures, never shipped or loaded by a compiler. -->
+    <NoWarn>$(NoWarn);RS1036;RS1038;RS1041;RS2008</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DragoAnt.Roslyn.Shared.Sources.Host/DragoAnt.Roslyn.Shared.Sources.Host.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+  </ItemGroup>
+</Project>

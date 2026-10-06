@@ -1,0 +1,141 @@
+<Project>
+
+  <!-- MSKit_PackageReadmeFrom: the package readme is generated from the repository README on pack,
+       never on build. Relative links and images become absolute URLs pinned to the commit,
+       nuget:skip / nuget:only blocks are applied, release and issue links are added to the overview.
+       The MSKIT_PKG checks then read the generated file. Full description: docs/package-readme.md. -->
+
+  <PropertyGroup>
+    <MSKit_PackageReadmeAllowedImageHostsFile Condition="'$(MSKit_PackageReadmeAllowedImageHostsFile)'==''">$(MSBuildThisFileDirectory)nuget.allowed-image-hosts.txt</MSKit_PackageReadmeAllowedImageHostsFile>
+    <_MSKit_ReadmeStampPath>$(MSKit_GeneratedPackageReadmePath).inputs</_MSKit_ReadmeStampPath>
+    <_MSKit_ReadmeFindingsBase>$(MSKit_GeneratedPackageReadmePath).findings</_MSKit_ReadmeFindingsBase>
+    <_MSKit_ReadmeReleasesUrlPath>$(MSKit_GeneratedPackageReadmePath).releases</_MSKit_ReadmeReleasesUrlPath>
+  </PropertyGroup>
+
+  <Target Name="_MSKit_ResolveAllowedImageHosts">
+    <ReadLinesFromFile Condition="'$(MSKit_PackageReadmeAllowedImageHosts)'=='' AND Exists('$(MSKit_PackageReadmeAllowedImageHostsFile)')"
+                       File="$(MSKit_PackageReadmeAllowedImageHostsFile)">
+      <Output TaskParameter="Lines" ItemName="_MSKit_AllowedImageHostLine" />
+    </ReadLinesFromFile>
+    <ItemGroup>
+      <_MSKit_AllowedImageHost Include="@(_MSKit_AllowedImageHostLine)" Condition="!$([System.String]::Copy('%(_MSKit_AllowedImageHostLine.Identity)').StartsWith('#'))" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_MSKit_AllowedImageHosts>$(MSKit_PackageReadmeAllowedImageHosts)</_MSKit_AllowedImageHosts>
+      <_MSKit_AllowedImageHosts Condition="'$(_MSKit_AllowedImageHosts)'==''">@(_MSKit_AllowedImageHost)</_MSKit_AllowedImageHosts>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="MSKit_GeneratePackageReadme"
+          BeforeTargets="GenerateNuspec"
+          Condition="'$(_MSKit_GeneratesReadme)'=='True'"
+          DependsOnTargets="_MSKit_PackageReadmeInputs;_MSKit_WritePackageReadme;_MSKit_ReportPackageReadmeFindings;_MSKit_DefaultReleaseNotesFromReadme" />
+
+  <Target Name="_MSKit_PackageReadmeFromMissing"
+          BeforeTargets="GenerateNuspec"
+          Condition="'$(MSKit_PackageReadmeFrom)'!='' AND '$(_MSKit_GeneratesReadme)'!='True' AND '$(MSKit_SkipPackageChecks)'!='All'">
+    <Warning Code="MSKIT_PKG020" File="$(MSBuildProjectFullPath)"
+             Text="MSKit_PackageReadmeFrom names '$(MSKit_PackageReadmeFrom)', but $(_MSKit_ReadmeFromPath) does not exist, so no readme is generated for '$(PackageId)'. The path is relative to the git root ($(MSKit_GitRoot))." />
+  </Target>
+
+  <!-- Everything that changes the generated text goes into a stamp written only when it differs,
+       so an unchanged README and unchanged settings skip the generator entirely. -->
+  <Target Name="_MSKit_PackageReadmeInputs"
+          DependsOnTargets="MSKit_ResolvePackageUrls;_InitializeNuspecRepositoryInformationProperties;_MSKit_ResolveAllowedImageHosts">
+    <PropertyGroup>
+      <_MSKit_ReadmeCommit>$(RepositoryCommit)</_MSKit_ReadmeCommit>
+      <_MSKit_ReadmeCommit Condition="'$(_MSKit_ReadmeCommit)'==''">$(SourceRevisionId)</_MSKit_ReadmeCommit>
+      <_MSKit_ReadmeCommit Condition="'$(_MSKit_ReadmeCommit)'==''">$(MSKit_CommitSha)</_MSKit_ReadmeCommit>
+      <_MSKit_ReadmeRepoRoot>$(MSKit_GitRoot)</_MSKit_ReadmeRepoRoot>
+      <_MSKit_ReadmeRepoRoot Condition="'$(_MSKit_ReadmeRepoRoot)'==''">$([System.IO.Path]::GetDirectoryName('$(_MSKit_ReadmeFromPath)'))</_MSKit_ReadmeRepoRoot>
+      <_MSKit_RepositoryVisibility>$(MSKit_RepositoryVisibility)</_MSKit_RepositoryVisibility>
+      <_MSKit_RepositoryVisibility Condition="'$(_MSKit_RepositoryVisibility)'==''">$(CI_PROJECT_VISIBILITY)</_MSKit_RepositoryVisibility>
+    </PropertyGroup>
+    <ItemGroup>
+      <_MSKit_ReadmeStampLine Include="package=$(PackageId)" />
+      <_MSKit_ReadmeStampLine Include="source=$(_MSKit_ReadmeFromPath)" />
+      <_MSKit_ReadmeStampLine Include="root=$(_MSKit_ReadmeRepoRoot)" />
+      <_MSKit_ReadmeStampLine Include="url=$(_MSKit_RepoUrl)" />
+      <_MSKit_ReadmeStampLine Include="commit=$(_MSKit_ReadmeCommit)" />
+      <_MSKit_ReadmeStampLine Include="provider=$(MSKit_RepoProvider)" />
+      <_MSKit_ReadmeStampLine Include="blob=$(MSKit_RepoBlobUrlTemplate)" />
+      <_MSKit_ReadmeStampLine Include="raw=$(MSKit_RepoRawUrlTemplate)" />
+      <_MSKit_ReadmeStampLine Include="releases=$(MSKit_ReleasesUrl)" />
+      <_MSKit_ReadmeStampLine Include="issues=$(MSKit_IssuesUrl)" />
+      <_MSKit_ReadmeStampLine Include="title=$(MSKit_PackageReadmeTitle)" />
+      <_MSKit_ReadmeStampLine Include="visibility=$(_MSKit_RepositoryVisibility)" />
+      <_MSKit_ReadmeStampLine Include="hosts=$(_MSKit_AllowedImageHosts)" />
+      <_MSKit_ReadmeStampLine Include="@(SourceLinkGitHubHost->'github=%(Identity)')" />
+      <_MSKit_ReadmeStampLine Include="@(SourceLinkGitLabHost->'gitlab=%(Identity)')" />
+      <_MSKit_ReadmeStampLine Include="@(SourceLinkAzureReposHost->'azure=%(Identity)')" />
+      <_MSKit_ReadmeStampLine Include="@(SourceLinkBitbucketGitHost->'bitbucket=%(Identity)')" />
+      <_MSKit_ReadmeStampLine Include="@(SourceLinkGiteaHost->'gitea=%(Identity)')" />
+    </ItemGroup>
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(MSKit_GeneratedPackageReadmePath)'))" />
+    <WriteLinesToFile File="$(_MSKit_ReadmeStampPath)" Lines="@(_MSKit_ReadmeStampLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+
+  <Target Name="_MSKit_WritePackageReadme"
+          Inputs="$(_MSKit_ReadmeFromPath);$(_MSKit_ReadmeStampPath);$(MSKit_PackageReadmeAllowedImageHostsFile);$(MSBuildThisFileFullPath);$(MSBuildThisFileDirectory)package.tasks.cs.txt"
+          Outputs="$(MSKit_GeneratedPackageReadmePath)">
+    <MSKit_PackageAssets Mode="GenerateReadme"
+                         ReadmePath="$(_MSKit_ReadmeFromPath)"
+                                 OutputPath="$(MSKit_GeneratedPackageReadmePath)"
+                                 FindingsBase="$(_MSKit_ReadmeFindingsBase)"
+                                 ReleasesUrlPath="$(_MSKit_ReadmeReleasesUrlPath)"
+                                 RepoRoot="$(_MSKit_ReadmeRepoRoot)"
+                                 PackageId="$(PackageId)"
+                                 RepositoryUrl="$(_MSKit_RepoUrl)"
+                                 Commit="$(_MSKit_ReadmeCommit)"
+                                 Provider="$(MSKit_RepoProvider)"
+                                 BlobTemplate="$(MSKit_RepoBlobUrlTemplate)"
+                                 RawTemplate="$(MSKit_RepoRawUrlTemplate)"
+                                 ReleasesUrl="$(MSKit_ReleasesUrl)"
+                                 IssuesUrl="$(MSKit_IssuesUrl)"
+                                 ReadmeTitle="$(MSKit_PackageReadmeTitle)"
+                                 Visibility="$(_MSKit_RepositoryVisibility)"
+                                 AllowedImageHosts="$(_MSKit_AllowedImageHosts)"
+                                 GitHubHosts="@(SourceLinkGitHubHost)"
+                                 GitLabHosts="@(SourceLinkGitLabHost)"
+                                 AzureReposHosts="@(SourceLinkAzureReposHost)"
+                                 BitbucketHosts="@(SourceLinkBitbucketGitHost)"
+                                 GiteaHosts="@(SourceLinkGiteaHost)" />
+  </Target>
+
+  <!-- Off GitHub, MSKit_ResolvePackageUrls has no release-notes default: use the releases page the
+       generator resolved, kept beside the generated file like the findings. -->
+  <Target Name="_MSKit_DefaultReleaseNotesFromReadme"
+          Condition="'$(PackageReleaseNotes)'=='' AND '$(MSKit_DefaultReleaseNotes)'!='False' AND Exists('$(_MSKit_ReadmeReleasesUrlPath)')">
+    <ReadLinesFromFile File="$(_MSKit_ReadmeReleasesUrlPath)">
+      <Output TaskParameter="Lines" PropertyName="_MSKit_ReadmeReleasesUrl" />
+    </ReadLinesFromFile>
+    <PropertyGroup>
+      <PackageReleaseNotes Condition="'$(_MSKit_ReadmeReleasesUrl)'!=''">$(_MSKit_ReadmeReleasesUrl)</PackageReleaseNotes>
+    </PropertyGroup>
+  </Target>
+
+  <!-- The findings are kept beside the generated file, so an incremental pack still reports them. -->
+  <Target Name="_MSKit_ReportPackageReadmeFindings" Condition="'$(MSKit_SkipPackageChecks)'!='All' AND '$(MSKit_SkipPackageChecks)'!='True'">
+    <ItemGroup>
+      <_MSKit_ReadmeCode Include="MSKIT_PKG020;MSKIT_PKG021;MSKIT_PKG022" />
+      <_MSKit_ReadmeSkip Include="$(MSKit_SkipPackageChecks);$(NoWarn)" />
+      <_MSKit_ReadmeCode Remove="@(_MSKit_ReadmeSkip)" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_MSKit_ReadmeCodes>;@(_MSKit_ReadmeCode);</_MSKit_ReadmeCodes>
+    </PropertyGroup>
+    <ReadLinesFromFile Condition="Exists('$(_MSKit_ReadmeFindingsBase).MSKIT_PKG020.txt') AND $(_MSKit_ReadmeCodes.Contains(';MSKIT_PKG020;'))" File="$(_MSKit_ReadmeFindingsBase).MSKIT_PKG020.txt">
+      <Output TaskParameter="Lines" ItemName="_MSKit_ReadmeFinding020" />
+    </ReadLinesFromFile>
+    <ReadLinesFromFile Condition="Exists('$(_MSKit_ReadmeFindingsBase).MSKIT_PKG021.txt') AND $(_MSKit_ReadmeCodes.Contains(';MSKIT_PKG021;'))" File="$(_MSKit_ReadmeFindingsBase).MSKIT_PKG021.txt">
+      <Output TaskParameter="Lines" ItemName="_MSKit_ReadmeFinding021" />
+    </ReadLinesFromFile>
+    <ReadLinesFromFile Condition="Exists('$(_MSKit_ReadmeFindingsBase).MSKIT_PKG022.txt') AND $(_MSKit_ReadmeCodes.Contains(';MSKIT_PKG022;'))" File="$(_MSKit_ReadmeFindingsBase).MSKIT_PKG022.txt">
+      <Output TaskParameter="Lines" ItemName="_MSKit_ReadmeFinding022" />
+    </ReadLinesFromFile>
+    <Warning Condition="'@(_MSKit_ReadmeFinding020)'!=''" Code="MSKIT_PKG020" File="$(_MSKit_ReadmeFromPath)" Text="%(_MSKit_ReadmeFinding020.Identity) (to skip: MSKit_SkipPackageChecks=MSKIT_PKG020)" />
+    <Warning Condition="'@(_MSKit_ReadmeFinding021)'!=''" Code="MSKIT_PKG021" File="$(_MSKit_ReadmeFromPath)" Text="%(_MSKit_ReadmeFinding021.Identity) (to skip: MSKit_SkipPackageChecks=MSKIT_PKG021)" />
+    <Warning Condition="'@(_MSKit_ReadmeFinding022)'!=''" Code="MSKIT_PKG022" File="$(_MSKit_ReadmeFromPath)" Text="%(_MSKit_ReadmeFinding022.Identity) (to skip: MSKit_SkipPackageChecks=MSKIT_PKG022)" />
+  </Target>
+
+</Project>
