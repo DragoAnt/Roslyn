@@ -4,7 +4,7 @@
     <NoWarn>$(NoWarn);RS1036;RS1038;RS1041;RS2008</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../DragoAnt.Roslyn.Shared.Sources.TestHost/DragoAnt.Roslyn.Shared.Sources.TestHost.csproj" />
+    <ProjectReference Include="../DragoAnt.Roslyn.Shared.Sources.Host/DragoAnt.Roslyn.Shared.Sources.Host.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />

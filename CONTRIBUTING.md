@@ -27,7 +27,7 @@ The stack:
 
 ## Tests
 
-- `DragoAnt.Roslyn.Shared.Sources.Tests` — unit tests of every helper, the rules every shared file follows (header, `#nullable enable`, `internal` types), and every C# block of the README and `docs/`. The helpers come from `DragoAnt.Roslyn.Shared.Sources.TestHost`, which compiles this checkout's sources through the package's own targets.
+- `DragoAnt.Roslyn.Shared.Sources.Tests` — unit tests of every helper, the rules every shared file follows (header, `#nullable enable`, `internal` types), and every C# block of the README and `docs/`. The helpers come from `DragoAnt.Roslyn.Shared.Sources.Host`, which compiles this checkout's sources through the package's own targets.
 - `DragoAnt.Roslyn.Shared.Sources.Consumer.Tests` — packs the package to a local feed in a temporary folder and builds the fixture under `Consumer/`: a code fix, an analyzer package carrying it, a generator package and an app that uses both. It checks the parts each role gets, the `.da.shared` links, that no package depends on the shared sources and that the app never restores them. It takes about a minute.
 
 ## Shared sources

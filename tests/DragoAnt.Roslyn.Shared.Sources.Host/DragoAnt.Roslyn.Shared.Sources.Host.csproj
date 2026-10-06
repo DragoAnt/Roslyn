@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!-- Compiles every shared part from this checkout through the package's own targets, the way an analyzer,
-       generator or code fix compiles them, and shows the internal copies to the unit tests. -->
+       generator or code fix compiles them, and shows the internal copies to the unit tests.
+       No "Test" in the name: code coverage skips modules whose path contains it. -->
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <MSKit_SkipAudit_TargetFrameworkOverride>True</MSKit_SkipAudit_TargetFrameworkOverride>

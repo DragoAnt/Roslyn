@@ -14,7 +14,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DragoAnt.Roslyn.Shared.Sources.Consumer.Tests/DragoAnt.Roslyn.Shared.Sources.Consumer.Tests.csproj" />
-    <Project Path="tests/DragoAnt.Roslyn.Shared.Sources.TestHost/DragoAnt.Roslyn.Shared.Sources.TestHost.csproj" />
+    <Project Path="tests/DragoAnt.Roslyn.Shared.Sources.Host/DragoAnt.Roslyn.Shared.Sources.Host.csproj" />
     <Project Path="tests/DragoAnt.Roslyn.Shared.Sources.Tests/DragoAnt.Roslyn.Shared.Sources.Tests.csproj" />
   </Folder>
 </Solution>
