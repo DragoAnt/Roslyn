@@ -14,13 +14,19 @@ internal static class TestCompilation
         .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
         .ToImmutableArray());
 
+    private static readonly ImmutableDictionary<string, ReportDiagnostic> UnifiedReferenceWarnings =
+        ImmutableDictionary<string, ReportDiagnostic>.Empty
+            .Add("CS1701", ReportDiagnostic.Suppress)
+            .Add("CS1702", ReportDiagnostic.Suppress);
+
     public static CSharpCompilation Create(
         IEnumerable<SyntaxTree> trees, NullableContextOptions nullable = NullableContextOptions.Enable) =>
         CSharpCompilation.Create(
             "TestAssembly",
             trees,
             References.Value,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: nullable));
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: nullable)
+                .WithSpecificDiagnosticOptions(UnifiedReferenceWarnings));
 
     public static CSharpCompilation Create(params string[] sources) =>
         Create(sources.Select((source, i) => CSharpSyntaxTree.ParseText(source, path: $"Source{i}.cs")));

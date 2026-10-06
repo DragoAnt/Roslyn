@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- The descriptors here are test fixtures, not shipped rules. -->
-    <NoWarn>$(NoWarn);RS2008</NoWarn>
+    <!-- The descriptors and the analyzer here are test fixtures, never shipped or loaded by a compiler. -->
+    <NoWarn>$(NoWarn);RS1036;RS1038;RS1041;RS2008</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../DragoAnt.Roslyn.Shared.Sources.TestHost/DragoAnt.Roslyn.Shared.Sources.TestHost.csproj" />
