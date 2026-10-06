@@ -18,9 +18,13 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IRea
 {
     private readonly T[]? _items;
 
-    public EquatableArray(T[] items) => _items = items is { Length: > 0 } ? (T[])items.Clone() : null;
+    public EquatableArray(T[] items)
+        : this(items, copy: true)
+    {
+    }
 
-    public EquatableArray(ImmutableArray<T> items) => _items = items.IsDefaultOrEmpty ? null : items.ToArray();
+    private EquatableArray(T[]? items, bool copy) =>
+        _items = items is { Length: > 0 } ? copy ? (T[])items.Clone() : items : null;
 
     public static EquatableArray<T> Empty => default;
 
@@ -74,15 +78,17 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IRea
     public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)(_items ?? Array.Empty<T>())).GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    internal static EquatableArray<T> Owning(T[] items) => new(items, copy: false);
 }
 
 internal static class EquatableArray
 {
     public static EquatableArray<T> ToEquatableArray<T>(this IEnumerable<T> items)
         where T : IEquatable<T> =>
-        new(items.ToArray());
+        EquatableArray<T>.Owning(items.ToArray());
 
     public static EquatableArray<T> ToEquatableArray<T>(this ImmutableArray<T> items)
         where T : IEquatable<T> =>
-        new(items);
+        EquatableArray<T>.Owning(items.IsDefault ? [] : items.ToArray());
 }

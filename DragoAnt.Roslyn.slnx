@@ -12,4 +12,8 @@
   <Folder Name="/src/">
     <Project Path="src/DragoAnt.Roslyn.Shared.Sources/DragoAnt.Roslyn.Shared.Sources.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DragoAnt.Roslyn.Shared.Sources.TestHost/DragoAnt.Roslyn.Shared.Sources.TestHost.csproj" />
+    <Project Path="tests/DragoAnt.Roslyn.Shared.Sources.Tests/DragoAnt.Roslyn.Shared.Sources.Tests.csproj" />
+  </Folder>
 </Solution>

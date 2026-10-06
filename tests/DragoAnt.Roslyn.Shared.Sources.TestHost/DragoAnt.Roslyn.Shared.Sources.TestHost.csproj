@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Compiles every shared part from this checkout through the package's own targets, the way an analyzer,
+       generator or code fix compiles them, and shows the internal copies to the unit tests. -->
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <MSKit_SkipAudit_TargetFrameworkOverride>True</MSKit_SkipAudit_TargetFrameworkOverride>
+    <IsPackable>false</IsPackable>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <DragoAntRoslynSharedParts>Common;Generators;CodeFixes</DragoAntRoslynSharedParts>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+  <Import Project="../../src/DragoAnt.Roslyn.Shared.Sources/build/DragoAnt.Roslyn.Shared.Sources.targets" />
+
+</Project>
